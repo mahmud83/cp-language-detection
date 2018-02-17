@@ -20,7 +20,7 @@ namespace Language_Detection
 
         IFeatureExtractor fe;
         IClassifier cs;
-        CodeSnippetParser csp;
+        ISnippetParser sp;
 
         public MainForm()
         {
@@ -44,7 +44,40 @@ namespace Language_Detection
             // Initialize our chosen feature extractor and classifier
             fe = new LetterGroupFeatureExtractor(ngram);
             cs = new AzureClassifier(fe, endpoint, apikey);
-            csp = new CodeSnippetParser();
+            sp = new CodeSnippetParser();
+
+            // Create a training set off of a lot of code samples
+            // ExtractTrainingSetFromFolder();
+        }
+
+        private void ExtractTrainingSetFromFolder()
+        {
+            ISnippetParser fsp = new FolderSnippetParser();
+            List<CodeSnippet> snippets = fsp.ExtractLabeledCodeSnippets("manual");
+            Encoding utf8 = Encoding.GetEncoding("UTF-8", new EncoderReplacementFallback(string.Empty), new DecoderExceptionFallback());
+
+            using (StreamWriter w = new StreamWriter("cp-training-30k.csv", false, utf8))
+            {
+                w.WriteLine("Language,Snippet");
+                Parallel.ForEach(snippets, s =>
+                {
+                    StringBuilder sb = new StringBuilder();
+                    foreach (string f in fe.ExtractFeatures(s.Snippet))
+                    {
+                        // The lines can't be longer than 32k or they'll wrap for some reason
+                        if (sb.Length < 32700)
+                        {
+                            sb.Append(f);
+                            sb.Append(" ");
+                        }
+                    }
+
+                    lock (w)
+                    {
+                        w.WriteLine(s.Language.ToLower() + "," + sb.ToString().Replace(",", ""));
+                    }
+                });
+            }
         }
 
         private string ShowDialog(string text, string caption)
@@ -111,7 +144,7 @@ namespace Language_Detection
         private void workerScoreFile_DoWork(object sender, DoWorkEventArgs e)
         {
             FileArgs files = e.Argument as FileArgs;
-            List<CodeSnippet> snippets = csp.ExtractLabeledCodeSnippets(File.ReadAllText(files.SourceFile));
+            List<CodeSnippet> snippets = sp.ExtractLabeledCodeSnippets(File.ReadAllText(files.SourceFile));
             
             ClassifierResult result = cs.ScoreClassifier(snippets, files.DestinationFile);
 
@@ -151,7 +184,7 @@ namespace Language_Detection
         private void workerPrep_DoWork(object sender, DoWorkEventArgs e)
         {
             FileArgs files = e.Argument as FileArgs;
-            List<CodeSnippet> snippets = csp.ExtractLabeledCodeSnippets(File.ReadAllText(files.SourceFile));
+            List<CodeSnippet> snippets = sp.ExtractLabeledCodeSnippets(File.ReadAllText(files.SourceFile));
 
             using (StreamWriter w = new StreamWriter(files.DestinationFile))
             {

@@ -8,12 +8,8 @@ using System.Web;
 
 namespace Language_Detection
 {
-    class CodeSnippetParser
+    class CodeSnippetParser : ISnippetParser
     {
-        public CodeSnippetParser()
-        {
-        }
-
         public List<CodeSnippet> ExtractLabeledCodeSnippets(string html)
         {
             List<CodeSnippet> snippets = new List<CodeSnippet>();
