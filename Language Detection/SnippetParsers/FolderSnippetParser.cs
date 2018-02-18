@@ -58,7 +58,11 @@ namespace Language_Detection
                         {
                             if (part.Trim().Length > 0)
                             {
-                                snippets.Add(new CodeSnippet(language, part));
+                                // Don't add if it already exists in the list
+                                if (!snippets.Any(x => x.Snippet == part))
+                                {
+                                    snippets.Add(new CodeSnippet(language, part));
+                                }
                             }
                         }
                     }

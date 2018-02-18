@@ -74,7 +74,13 @@ namespace Language_Detection
 
                     lock (w)
                     {
-                        w.WriteLine(s.Language.ToLower() + "," + sb.ToString().Replace(",", ""));
+                        string snippet = sb.ToString().Replace(",", "");
+
+                        // We don't want to train off of small snippets
+                        if (snippet.Length >= 256)
+                        {
+                            w.WriteLine(s.Language.ToLower() + "," + snippet);
+                        }
                     }
                 });
             }
