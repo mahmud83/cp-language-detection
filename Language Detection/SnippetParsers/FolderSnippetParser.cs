@@ -31,27 +31,24 @@ namespace Language_Detection
                         string contents = File.ReadAllText(file, Encoding.UTF8);
 
                         List<string> parts = new List<string>();
+                        List<string> lines = contents.Split(new string[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries).ToList();
 
-                        if (contents.Length > 4096)
+                        int maxLines = 100;
+
+                        for (int i = 0; i < lines.Count; i += maxLines)
                         {
-                            List<string> lines = contents.Split(new string[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries).ToList();
-                            int maxLines = 100;
+                            string code = "";
 
-                            for (int i = 0; i < lines.Count; i+= maxLines)
+                            for (int c = i; c < Math.Min(i + maxLines, lines.Count); c++)
                             {
-                                string code = "";
-
-                                for (int c = i; c < Math.Min(i + maxLines, lines.Count); c ++)
+                                // Get rid of the easy comments since well documented code is such a pain :)
+                                if (!IsCommentLine(lines[c]))
                                 {
                                     code += lines[c] + " ";
                                 }
-
-                                parts.Add(code);
                             }
-                        }
-                        else
-                        {
-                            parts.Add(contents);
+
+                            parts.Add(code);
                         }
 
                         foreach (string part in parts)
@@ -76,6 +73,19 @@ namespace Language_Detection
             return snippets;
         }
 
+        private bool IsCommentLine(string line)
+        {
+            // This won't catch everything, and it might occasionally remove actual code, but that's OK
+            return line.Trim().StartsWith("/*") ||
+                   line.Trim().StartsWith("//") ||
+                   line.Trim().StartsWith("\\*") ||
+                   line.Trim().StartsWith("#") ||
+                   line.Trim().StartsWith(";") ||
+                   line.StartsWith("--") ||
+                   line.StartsWith(" *") ||
+                   line.StartsWith("**");
+        }
+        
         private string GetFileExtension(string language)
         {
             switch (language.ToLower())
